@@ -1,0 +1,53 @@
+'''
+Передаем переменные между тасками через XCom
+'''
+
+from datetime import timedelta, datetime
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+#Аргументы, которые будут использоваться для тасков по дефолту
+default_args={
+    'depends_on_past': False,
+    'email': ['airflow@example.com'],
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5)
+}
+#Задаем параметры DAG
+with DAG('hw_9_n-eremenko',
+         default_args = default_args,
+         description ='hw_9_',
+         schedule_interval=timedelta(days=1),
+         start_date = datetime(2022,9, 9),
+         catchup = False,
+         tags=['hw_9_n-eremenko']) as dag:
+
+
+    def take_xcom(ti):
+        '''
+        Задаем значение и ключ переменной и передаем в ti
+        '''
+        ti.xcom_push(key="sample_xcom_key",
+                     value="xcom test")
+
+
+    def give_xcom(ti):
+        '''
+        Делаем пулл переменной по ключу и task_id
+        '''
+        xcom_value = ti.xcom_pull(
+            key="sample_xcom_key",
+            task_ids="python_take_xcom")
+        print(xcom_value)
+
+
+    t1 = PythonOperator(task_id='python_take_xcom',
+                        python_callable=take_xcom)
+
+    t2 = PythonOperator(task_id='python_give_xcom',
+                        python_callable=give_xcom)
+
+    t1 >> t2
